@@ -8,6 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.8.2
 	github.com/ipfs/go-cid v0.2.0
 	github.com/ipfs/go-log/v2 v2.5.1
+	github.com/juju/ratelimit v1.0.2
 	github.com/spf13/viper v1.15.0
 	github.com/urfave/cli/v2 v2.8.1
 )

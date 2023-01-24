@@ -10,17 +10,27 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/juju/ratelimit"
+	"sync"
 	"time"
 )
 
-var log = logging.Logger("wallet-server")
+var log = logging.Logger("msgboat")
 
 type Boat struct {
-	nodes map[string]string
-	apis  map[string]client.LotusClient
+	lk             sync.Mutex
+	nodes          map[string]string
+	apis           map[string]client.LotusClient
+	limiterBuckets *ratelimit.Bucket
 }
 
 func NewBoat(nodes map[string]string) (*Boat, error) {
+	bucket := ratelimit.NewBucketWithQuantum(
+		time.Second,
+		10,
+		10,
+	)
+
 	var apis = map[string]client.LotusClient{}
 	for name, rpcAddr := range nodes {
 		cli, err := client.NewLotusClient(rpcAddr, "")
@@ -42,13 +52,17 @@ func NewBoat(nodes map[string]string) (*Boat, error) {
 	}
 
 	return &Boat{
-		nodes: nodes,
-		apis:  apis,
+		nodes:          nodes,
+		apis:           apis,
+		limiterBuckets: bucket,
 	}, nil
 }
 
 // Send Post
 func (b *Boat) Send(c *gin.Context) {
+	b.lk.Lock()
+	defer b.lk.Unlock()
+
 	param := chain.SignedMessage{}
 	err := c.BindJSON(&param)
 	if err != nil {
@@ -76,11 +90,8 @@ func (b *Boat) Send(c *gin.Context) {
 
 func (b *Boat) mpoolPush(signedMsg *types.SignedMessage) (cid.Cid, error) {
 	ctx := context.Background()
-
 	for name, api := range b.apis {
-		ctxWithTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
-		cid, err := api.Api.MpoolPush(ctxWithTimeout, signedMsg)
-		cancel()
+		cid, err := api.Api.MpoolPush(ctx, signedMsg)
 		if err != nil {
 			log.Warnw("MpoolPush fail", "name", name, "err", err)
 			continue
@@ -96,6 +107,9 @@ func (b *Boat) mpoolPush(signedMsg *types.SignedMessage) (cid.Cid, error) {
 }
 
 func (b *Boat) Status(c *gin.Context) {
+	b.lk.Lock()
+	defer b.lk.Unlock()
+
 	i := 0
 	for _, api := range b.apis {
 		_, err := api.Api.ChainHead(context.Background())
