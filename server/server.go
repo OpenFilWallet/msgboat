@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/OpenFilWallet/OpenFilWallet/chain"
 	"github.com/OpenFilWallet/OpenFilWallet/client"
@@ -15,7 +16,8 @@ import (
 var log = logging.Logger("wallet-server")
 
 type Boat struct {
-	apis map[string]client.LotusClient
+	nodes map[string]string
+	apis  map[string]client.LotusClient
 }
 
 func NewBoat(nodes map[string]string) (*Boat, error) {
@@ -40,7 +42,8 @@ func NewBoat(nodes map[string]string) (*Boat, error) {
 	}
 
 	return &Boat{
-		apis: apis,
+		nodes: nodes,
+		apis:  apis,
 	}, nil
 }
 
@@ -82,8 +85,34 @@ func (b *Boat) mpoolPush(signedMsg *types.SignedMessage) (cid.Cid, error) {
 			log.Warnw("MpoolPush fail", "name", name, "err", err)
 			continue
 		}
+
+		msg, _ := json.Marshal(signedMsg)
+		log.Infow("Send", "name", name, "cid", cid.String(), "msg", string(msg))
+
 		return cid, nil
 	}
 
 	return cid.Cid{}, errors.New("")
+}
+
+func (b *Boat) Status(c *gin.Context) {
+	i := 0
+	for _, api := range b.apis {
+		_, err := api.Api.ChainHead(context.Background())
+		if err != nil {
+			log.Warnw("ChainHead", "err", err)
+			continue
+		}
+		i++
+	}
+
+	if i == 0 {
+		ReturnError(c, NewError(500, "no nodes available"))
+		return
+	}
+
+	ReturnOk(c, client.Response{
+		Code:    200,
+		Message: "Good",
+	})
 }

@@ -11,8 +11,7 @@ func NewError(code int, msg string) *client.Response {
 }
 
 var (
-	ParamErr = NewError(1001, "parameter mismatch")
-	AuthErr  = NewError(1002, "permission verification failed")
+	ParamErr = NewError(405, "parameter mismatch")
 )
 
 func ReturnOk(c *gin.Context, data interface{}) {

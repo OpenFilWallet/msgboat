@@ -6,7 +6,8 @@ func (b *Boat) NewRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(Recovery())
 
-	r.POST("/push", b.Send)
+	r.GET("/status", b.Status)
+	r.POST("/send", b.Send)
 
 	return r
 }
