@@ -1,0 +1,4 @@
+nodes:
+  infura: https://xxxx@filecoin.infura.io
+  glif: https://api.node.glif.io/rpc/v0
+# ...
