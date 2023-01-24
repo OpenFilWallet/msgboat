@@ -16,6 +16,6 @@ Only transactions encoded by `OpenFilWallet/OpenFilWallet/chain` can be recogniz
 git clone git@github.com:OpenFilWallet/msgboat.git
 cd msgboat
 go mod tidy && go build -o msgboat main.go
-./msgboad run
+./msgboat run
 ```
 
